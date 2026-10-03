@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🥟 Empanadas Criollas Congeladas</title>
+<style>
+body{font-family:Arial,sans-serif;background:#fff8ef;margin:0;padding:20px;color:#333}
+.container{max-width:560px;margin:auto;background:white;padding:24px;border-radius:18px;box-shadow:0 4px 18px #0001}
+h1{text-align:center;color:#140d08;margin-top:0}
+label{font-weight:bold;display:block;margin-top:16px}
+input,select,textarea{width:100%;box-sizing:border-box;padding:12px;margin-top:7px;border:1px solid #ddd;border-radius:10px;font-size:16px}
+textarea{min-height:90px;resize:vertical}
+button{width:100%;padding:14px;border:0;border-radius:12px;font-size:17px;font-weight:bold;margin-top:18px;cursor:pointer}
+.primary{background:#8b3f16;color:white}.whatsapp{background:#25d366;color:white}.secondary{background:#eee;color:#333}
+.hidden{display:none}.result{margin-top:18px;padding:15px;background:#fff3df;border-radius:12px}
+.small{font-size:13px;color:#666;line-height:1.45;margin-top:18px}
+.dozen-box{margin-top:12px;padding:12px;background:#faf5ed;border-radius:10px}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>🥟 Empanadas Criollas Congeladas</h1>
+
+<label>👤 Nombre</label>
+<input id="name" type="text" placeholder="Tu nombre">
+
+<label>🚚 ¿Cómo querés recibir tu pedido?</label>
+<select id="deliveryMode">
+<option value="delivery">🚚 Con envío</option>
+<option value="pickup">🏠 Sin envío / Retiro</option>
+</select>
+
+<div id="addressBox">
+<label>📍 Dirección de entrega</label>
+<input id="address" type="text" placeholder="Calle, número, barrio, ciudad">
+</div>
+
+<label>🥟 ¿Qué querés pedir?</label>
+<select id="presentation">
+<option value="half">🥟 Media docena — $9.000</option>
+<option value="dozen">🥟 Docenas — $18.000 cada una</option>
+<option value="onehalf">🥟 Docena y media — $27.000</option>
+</select>
+
+<label>🔢 Cantidad</label>
+<input id="quantity" type="number" min="1" value="1">
+
+<div id="raisinSingleBox">
+<label>🍇 ¿Con pasas de uva?</label>
+<select id="raisinSingle">
+<option value="with">🍇 Con pasas de uva</option>
+<option value="without">🚫 Sin pasas de uva</option>
+</select>
+</div>
+
+<div id="dozenChoices" class="hidden"></div>
+
+<label>📝 Comentarios o aclaraciones</label>
+<textarea id="comments" placeholder="Ej.: 2 docenas sin pasas y 1 docena con pasas. O cualquier otra aclaración del pedido."></textarea>
+
+<button class="primary" onclick="calculateOrder()">🚗 Calcular pedido</button>
+<div id="result" class="result hidden"></div>
+<button id="whatsappBtn" class="whatsapp hidden" onclick="sendWhatsApp()">📲 Enviar pedido por WhatsApp</button>
+<button class="secondary" onclick="newOrder()">➕ Nuevo pedido</button>
+
+<div class="small">
+<strong>📍 Envíos desde:</strong> Villa Warcalde, Córdoba, Argentina.<br>
+<strong>🚚 Costo de envío:</strong> $2.000 por cada 6 km de recorrido en vehículo.<br>
+🏠 Si elegís “Sin envío / Retiro”, no se solicita dirección ni se cobra envío.
+</div>
+</div>
+
+<script>
+const ORIGIN="De La Aguada 10356, Villa Warcalde, Córdoba, Argentina";
+let lastOrder=null;
+const money=n=>"$"+n.toLocaleString("es-AR");
+const typeText=v=>v==="savory"?"saladas":"dulces";
+const raisinText=v=>v==="with"?"con pasas":"sin pasas";
+
+document.getElementById("deliveryMode").addEventListener("change",toggleDelivery);
+document.getElementById("presentation").addEventListener("change",updateProductOptions);
+document.getElementById("quantity").addEventListener("input",updateProductOptions);
+
+function toggleDelivery(){
+ const delivery=document.getElementById("deliveryMode").value==="delivery";
+ document.getElementById("addressBox").classList.toggle("hidden",!delivery);
+}
+function updateProductOptions(){
+  const type=document.getElementById("presentation").value;
+  const qty=Math.max(1,parseInt(document.getElementById("quantity").value||"1"));
+  const single=document.getElementById("raisinSingleBox");
+  const choices=document.getElementById("dozenChoices");
+
+  if(type==="half"){
+    document.getElementById("quantity").value=1;
+
+    single.classList.remove("hidden");
+    choices.classList.add("hidden");
+    choices.innerHTML="";
+
+    single.innerHTML=`
+      <label>🥟 Tipo de empanada</label>
+
+      <select id="typeSingle">
+        <option value="savory">🧂 Saladas</option>
+        <option value="sweet">🍬 Dulces</option>
+      </select>
+
+      <label>🍇 ¿Con pasas de uva?</label>
+
+      <select id="raisinSingle">
+        <option value="with">🍇 Con pasas de uva</option>
+        <option value="without">🚫 Sin pasas de uva</option>
+      </select>
+    `;
+
+  }else if(type==="onehalf"){
+
+    document.getElementById("quantity").value=1;
+
+    single.classList.add("hidden");
+    choices.classList.remove("hidden");
+    choices.innerHTML="";
+
+    for(const label of ["🥟 Docena","🥟 Media docena"]){
+
+      const box=document.createElement("div");
+      box.className="dozen-box";
+
+      box.innerHTML=`
+        <label>${label}</label>
+
+        <label>🥟 Tipo de empanada</label>
+        <select class="typeDozen">
+          <option value="savory">🧂 Saladas</option>
+          <option value="sweet">🍬 Dulces</option>
+        </select>
+
+        <label>🍇 ¿Con pasas de uva?</label>
+        <select class="raisinDozen">
+          <option value="with">🍇 Con pasas de uva</option>
+          <option value="without">🚫 Sin pasas de uva</option>
+        </select>
+      `;
+
+      choices.appendChild(box);
+    }
+
+  }else{
+
+    single.classList.add("hidden");
+    choices.classList.remove("hidden");
+    choices.innerHTML="";
+
+    for(let i=1;i<=qty;i++){
+
+      const box=document.createElement("div");
+      box.className="dozen-box";
+
+      box.innerHTML=`
+        <label>🥟 Docena ${i}</label>
+
+        <label>🥟 Tipo de empanada</label>
+        <select class="typeDozen">
+          <option value="savory">🧂 Saladas</option>
+          <option value="sweet">🍬 Dulces</option>
+        </select>
+
+        <label>🍇 ¿Con pasas de uva?</label>
+        <select class="raisinDozen">
+          <option value="with">🍇 Con pasas de uva</option>
+          <option value="without">🚫 Sin pasas de uva</option>
+        </select>
+      `;
+
+      choices.appendChild(box);
+    }
+  }
+}
+
+async function geocode(address){
+ const u="https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ar&q="+encodeURIComponent(address);
+ const r=await fetch(u,{headers:{"Accept-Language":"es"}});
+ if(!r.ok)throw new Error("No se pudo consultar la dirección.");
+ const d=await r.json(); if(!d.length)throw new Error("No encontramos esa dirección. Revisala e intentá nuevamente.");
+ return {lat:+d[0].lat,lon:+d[0].lon};
+}
+async function routeKm(destination){
+ const a=await geocode(ORIGIN),b=await geocode(destination);
+ const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=false`);
+ if(!r.ok)throw new Error("No se pudo calcular el recorrido.");
+ const d=await r.json(); if(d.code!=="Ok"||!d.routes?.length)throw new Error("No se pudo encontrar una ruta.");
+ return d.routes[0].distance/1000;
+}
+function getProducts(){
+
+  const type=document.getElementById("presentation").value;
+
+  const qty=Math.max(
+    1,
+    +document.getElementById("quantity").value||1
+  );
+
+  if(type==="half"){
+
+    return {
+      items:[{
+        label:"Media docena",
+        type:document.getElementById("typeSingle").value,
+        raisin:document.getElementById("raisinSingle").value
+      }],
+      subtotal:9000
+    };
+
+  }
+
+  if(type==="onehalf"){
+
+    const types=[
+      ...document.querySelectorAll(".typeDozen")
+    ];
+
+    const raisins=[
+      ...document.querySelectorAll(".raisinDozen")
+    ];
+
+    return {
+
+      items:[
+
+        {
+          label:"Docena",
+          type:types[0]?.value||"savory",
+          raisin:raisins[0]?.value||"with"
+        },
+
+        {
+          label:"Media docena",
+          type:types[1]?.value||"savory",
+          raisin:raisins[1]?.value||"with"
+        }
+
+      ],
+
+      subtotal:27000
+    };
+  }
+
+  const types=[
+    ...document.querySelectorAll(".typeDozen")
+  ];
+
+  const raisins=[
+    ...document.querySelectorAll(".raisinDozen")
+  ];
+
+  return {
+
+    items:types.map((s,i)=>({
+
+      label:"Docena "+(i+1),
+
+      type:s.value,
+
+      raisin:raisins[i]?.value||"with"
+
+    })),
+
+    subtotal:18000*qty
+
+  };
+}
+async function calculateOrder(){
+ const name=document.getElementById("name").value.trim(),mode=document.getElementById("deliveryMode").value,address=document.getElementById("address").value.trim();
+ if(!name)return alert("Por favor, ingresá tu nombre.");
+ if(mode==="delivery"&&!address)return alert("Por favor, ingresá la dirección de entrega.");
+ const {items,subtotal}=getProducts(); let shipping=0,km=null;
+ const result=document.getElementById("result");result.classList.remove("hidden");result.innerHTML="⏳ Preparando tu pedido...";
+ try{
+  if(mode==="delivery"){result.innerHTML="🚗 Calculando distancia de envío...";km=await routeKm(address);shipping=Math.max(1,Math.ceil(km/6))*2000;}
+  const total=subtotal+shipping;
+  result.innerHTML=`<strong>🧾 Resumen del pedido</strong><br><br>${items.map(x=>`• ${x.label}: ${typeText(x.type)}, ${raisinText(x.raisin)}`).join("<br>")}<br><br>
+  Subtotal: <strong>${money(subtotal)}</strong><br>
+  ${mode==="delivery"?`🚚 Distancia por ruta: <strong>${km.toFixed(1)} km</strong><br>Envío: <strong>${money(shipping)}</strong>`:`🏠 Envío: <strong>$0</strong> (sin envío)`}<br><br>
+  💰 Total: <strong>${money(total)}</strong>`;
+  lastOrder={name,mode,address,items,subtotal,shipping,km,total,comments:document.getElementById("comments").value.trim()};
+  document.getElementById("whatsappBtn").classList.remove("hidden");
+ }catch(e){result.innerHTML="⚠️ "+e.message;document.getElementById("whatsappBtn").classList.add("hidden");}
+}
+function sendWhatsApp(){
+ if(!lastOrder)return;const o=lastOrder;
+ let t=`🥟 PEDIDO - EMPANADAS CRIOLLAS CONGELADAS\n\n👤 Nombre: ${o.name}\n\n${o.items.map(x=>`- ${x.label}: ${raisinText(x.raisin)}`).join("\n")}\n\n💵 Subtotal: ${money(o.subtotal)}\n`;
+ t+=o.mode==="delivery"?`🚚 Envío: ${money(o.shipping)}\n📍 Dirección: ${o.address}\n📏 Distancia: ${o.km.toFixed(1)} km\n`:`🏠 Sin envío / Retiro: $0\n`;
+ t+=`💰 TOTAL: ${money(o.total)}\n`;if(o.comments)t+=`\n📝 Comentarios: ${o.comments}\n`;
+ window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank");
+}${o.items.map(x=>`- ${x.label}: ${typeText(x.type)}, ${raisinText(x.raisin)}`).join("\n")}
+function newOrder(){location.reload();}
+toggleDelivery();updateProductOptions();
+</script>
+</body>
+</html>
