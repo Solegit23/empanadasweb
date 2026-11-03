@@ -44,7 +44,7 @@ button{width:100%;padding:14px;border:0;border-radius:12px;font-size:17px;font-w
 <div id="orderItems"></div>
 <button type="button" class="secondary" onclick="addItem()">➕ Agregar otra variedad</button>
 
-<label>📝 Comentarios o aclaraciones</label>
+<label>📝 Comentarios o Aclaraciones</label>
 <textarea id="comments" placeholder="Ej.: 2 docenas sin pasas y 1 docena con pasas. O cualquier otra aclaración del pedido."></textarea>
 
 <button class="primary" onclick="calculateOrder()">🚗 Calcular Pedido</button>
@@ -258,7 +258,7 @@ async function calculateOrder(){
 }
 function sendWhatsApp(){
  if(!lastOrder)return;const o=lastOrder;
- let t=`PEDIDO - EMPANADAS CRIOLLAS CONGELADAS\n\nNombre: ${o.name}\n\n${o.items.map(x=>`- ${x.label}: ${typeText(x.type)}${x.type==="sweet"?", "+raisinText(x.raisin):""}`).join("\n")}\n\nSubtotal: ${money(o.subtotal)}\n`;
+ let t=`PEDIDO - EMPANADAS CONGELADAS\n\nNombre: ${o.name}\n\n${o.items.map(x=>`- ${x.label}: ${typeText(x.type)}${x.type==="sweet"?", "+raisinText(x.raisin):""}`).join("\n")}\n\nSubtotal: ${money(o.subtotal)}\n`;
  t+=o.mode==="delivery"?(o.shippingPending?`Envío: A CONFIRMAR (falló la conexión para calcular la distancia)\nDirección: ${o.address}\n`:`Envío: ${money(o.shipping)}\nDirección: ${o.address}\nDistancia: ${o.km.toFixed(1)} km\n`):`Sin envío / Retiro: $0\n`;
  t+=o.shippingPending?`Subtotal de productos: ${money(o.subtotal)}\nTOTAL FINAL: A CONFIRMAR CON EL ENVÍO\n`:`TOTAL: ${money(o.total)}\n`;if(o.comments)t+=`\nComentarios: ${o.comments}\n`;
  window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank");
